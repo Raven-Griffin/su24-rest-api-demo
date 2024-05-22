@@ -2,11 +2,14 @@ package com.csc340.restapidemo;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
-
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.RestTemplate;
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 
 
 
@@ -27,14 +30,13 @@ public class RestApiController {
 
     private static final String FILE_PATH = "students.json";
     private ObjectMapper objectMapper = new ObjectMapper();
-
     private Map<Integer, Student> studentDatabase = new HashMap<>();
 
     public RestApiController() {
-        loadStudentsFromJson();
+        loadJson();
     }
 
-    private void loadStudentsFromJson() {
+    private void loadJson() {
         try {
             Path filePath = Paths.get(FILE_PATH);
 
@@ -119,13 +121,13 @@ public class RestApiController {
     public Object updateStudent(@PathVariable int id, @RequestBody Student updatedStudent) {
         // checks to see if IDs match
         if (!studentDatabase.containsKey(id)) {
-            return "Student " + id + " does not exist.";
+            return "Student " + id + " doesn't exist.";
         }
         updatedStudent.setId(id);
         studentDatabase.put(id, updatedStudent);
         saveToFile();
 
-        return "Student update successful!";
+        return "Student update";
     }
 
     /**
@@ -135,14 +137,15 @@ public class RestApiController {
      * @return the List of Students.
      */
     @DeleteMapping("students/delete/{id}")
-    public Object deleteStudent(@PathVariable int id) {
-        //if else that make sure the id exists the deletes
+    public ResponseEntity<Object> deleteStudent(@PathVariable int id) {
         if (!studentDatabase.containsKey(id)) {
-            return "Student " + id + " doesn't exist.";
-        }else {
+            // Return a response indicating the student does not exist with a 404 status code
+            return new ResponseEntity<>("Student " + id + " doesn't exist.", HttpStatus.NOT_FOUND);
+        } else {
             studentDatabase.remove(id);
             saveToFile();
-            return studentDatabase.values();
+            // Return a response with the updated list of students and a 200 status code
+            return new ResponseEntity<>(studentDatabase.values(), HttpStatus.OK);
         }
     }
 
@@ -218,7 +221,7 @@ public class RestApiController {
      */
     @GetMapping(value ="/countries")
     public List<Object> getCountries(){
-        String url="https://apiv3.iucnredlist.org/api/v3/docs#countries-species";
+        String url="https://gis.ducks.org/datasets/du-university-chapters/api";
         RestTemplate restTemplate = new RestTemplate();
 
         String countries = restTemplate.getForObject(url, String.class);
@@ -226,5 +229,7 @@ public class RestApiController {
         List<Object> list = Arrays.asList(countries);
         return list;
     }
+
+
 
 }
