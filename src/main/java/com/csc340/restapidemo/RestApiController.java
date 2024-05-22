@@ -214,20 +214,18 @@ public class RestApiController {
 
     }
     /**
-     * Get a list of countries and make them available at our own API
+     * Get a list of Dogs and make them available at our own API
      * endpoint.
      *
      * @return json array
      */
-    @GetMapping(value ="/countries")
-    public List<Object> getCountries(){
-        String url="https://gis.ducks.org/datasets/du-university-chapters/api";
+
+
+    @GetMapping(value ="/dogs")
+    public String getDogBreed() {
         RestTemplate restTemplate = new RestTemplate();
-
-        String countries = restTemplate.getForObject(url, String.class);
-
-        List<Object> list = Arrays.asList(countries);
-        return list;
+        String apiUrl = "https://dogapi.dog/api/v2/breeds";
+        return restTemplate.getForObject(apiUrl, String.class);
     }
 
 
