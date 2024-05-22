@@ -1,12 +1,23 @@
 package com.csc340.restapidemo;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.RestTemplate;
 
+
+
+import java.io.FileWriter;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.nio.file.Path;
+import java.io.IOException;
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -14,13 +25,47 @@ import java.util.logging.Logger;
 @RestController
 public class RestApiController {
 
-    Map<Integer, Student> studentDatabase = new HashMap<>();
+    private static final String FILE_PATH = "students.json";
+    private ObjectMapper objectMapper = new ObjectMapper();
 
+    private Map<Integer, Student> studentDatabase = new HashMap<>();
+
+    public RestApiController() {
+        loadStudentsFromJson();
+    }
+
+    private void loadStudentsFromJson() {
+        try {
+            Path filePath = Paths.get(FILE_PATH);
+
+// make sure file exists
+            if (Files.exists(filePath)) {
+                String jsonContent = Files.readString(filePath);
+                studentDatabase = objectMapper.readValue(jsonContent, new TypeReference<Map<Integer, Student>>() {});
+            }
+
+            //sends a message
+        } catch (IOException e) {
+            Logger.getLogger(RestApiController.class.getName())
+                    .log(Level.SEVERE, "Failed to load", e);
+        }
+    }
+
+    private void saveToFile() {
+        // Initialize a FileWriter
+        try (FileWriter fileWriter = new FileWriter(FILE_PATH)) {
+            objectMapper.writeValue(fileWriter, studentDatabase);
+        } catch (IOException e) {
+            Logger.getLogger(RestApiController.class.getName())
+                    .log(Level.SEVERE, "Failed to save students to file", e);
+        }
+    }
     /**
      * Hello World API endpoint.
      *
      * @return response string.
      */
+
     @GetMapping("/hello")
     public String hello() {
         return "Hello, World!";
@@ -32,13 +77,13 @@ public class RestApiController {
      * @param name the request parameter
      * @return the response string.
      */
+
+
     @GetMapping("/greeting")
     public String greeting(@RequestParam(value = "name", defaultValue = "Dora") String name) {
         return "Hola, soy " + name;
     }
-
-
-    /**
+ /**
      * List all students.
      *
      * @return the list of students.
@@ -50,7 +95,6 @@ public class RestApiController {
         }
         return studentDatabase.values();
     }
-
     /**
      * Get one student by Id
      *
@@ -63,16 +107,25 @@ public class RestApiController {
     }
 
 
-    /**
-     * Create a new Student entry.
-     *
-     * @param student the new Student
-     * @return the List of Students.
-     */
     @PostMapping("students/create")
     public Object createStudent(@RequestBody Student student) {
         studentDatabase.put(student.getId(), student);
+        //save
+        saveToFile();
         return studentDatabase.values();
+    }
+
+    @PutMapping("students/update/{id}")
+    public Object updateStudent(@PathVariable int id, @RequestBody Student updatedStudent) {
+        // checks to see if IDs match
+        if (!studentDatabase.containsKey(id)) {
+            return "Student " + id + " does not exist.";
+        }
+        updatedStudent.setId(id);
+        studentDatabase.put(id, updatedStudent);
+        saveToFile();
+
+        return "Student update successful!";
     }
 
     /**
@@ -83,9 +136,16 @@ public class RestApiController {
      */
     @DeleteMapping("students/delete/{id}")
     public Object deleteStudent(@PathVariable int id) {
-        studentDatabase.remove(id);
-        return studentDatabase.values();
+        //if else that make sure the id exists the deletes
+        if (!studentDatabase.containsKey(id)) {
+            return "Student " + id + " doesn't exist.";
+        }else {
+            studentDatabase.remove(id);
+            saveToFile();
+            return studentDatabase.values();
+        }
     }
+
 
     /**
      * Get a quote from quotable and make it available our own API endpoint
@@ -150,4 +210,21 @@ public class RestApiController {
         }
 
     }
+    /**
+     * Get a list of countries and make them available at our own API
+     * endpoint.
+     *
+     * @return json array
+     */
+    @GetMapping(value ="/countries")
+    public List<Object> getCountries(){
+        String url="https://apiv3.iucnredlist.org/api/v3/docs#countries-species";
+        RestTemplate restTemplate = new RestTemplate();
+
+        String countries = restTemplate.getForObject(url, String.class);
+
+        List<Object> list = Arrays.asList(countries);
+        return list;
+    }
+
 }
